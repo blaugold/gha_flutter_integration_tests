@@ -19,7 +19,6 @@ jobs:
         include:
           - host: macos-12
             target: android
-            device: emulator-5554
     runs-on: ${{ matrix.host }}
     steps:
       - name: Add avdmanager and sdkmanager to PATH
@@ -41,9 +40,9 @@ jobs:
         if: matrix.target == 'android'
         run: |
           avdmanager create avd \
-            -n "${{ env.emulatorName }}" \
-            -k "${{ env.emulatorSystemImage }}" \
-            -d "${{ env.emulatorDevice }}"
+            --name "${{ env.emulatorName }}" \
+            --package "${{ env.emulatorSystemImage }}" \
+            --device "${{ env.emulatorDevice }}"
 
       - name: Start emulator
         if: matrix.target == 'android'
@@ -67,5 +66,7 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Run intergration tests
-        run: flutter test integration_test --device ${{ matrix.device }}
+      - name: Run intergration tests on Android
+        if: matrix.target == 'android'
+        run: |
+          flutter test integration_test --device-id "emulator-${{ env.emulatorPort }}"
