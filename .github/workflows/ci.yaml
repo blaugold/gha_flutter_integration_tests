@@ -85,7 +85,7 @@ jobs:
       - name: Boot simulator
         if: matrix.target == 'ios'
         timeout-minutes: 5
-        run:
+        run: |
           until xcrun simctl bootstatus "${{ steps.find_simulator_id.outputs.ID }}" -b; do
             echo "Waiting for simulator to boot..."
             sleep 5
