@@ -8,7 +8,7 @@ on:
 
 env:
   emulatorSystemImage: 'system-images;android-22;google_apis;x86'
-  emulatorName: 'emulator'
+  emulatorName: 'gha_ci_emulator'
   emulatorDevice: 'pixel_4'
   emulatorPort: 5554
 
@@ -17,7 +17,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - host: macos-13
+          - host: macos-12
             target: android
             device: emulator-5554
     runs-on: ${{ matrix.host }}
