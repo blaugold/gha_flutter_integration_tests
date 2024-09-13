@@ -61,6 +61,13 @@ jobs:
         if: matrix.target == 'android'
         run: adb -s "emulator-${{ env.emulatorPort }}" wait-for-device
 
+      - name: Install Java 17
+        if: matrix.target == 'android'
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'adopt'
+          java-version: '17'
+
       - name: Find simulator ID
         if: matrix.target == 'ios'
         id: find_simulator_id
