@@ -84,8 +84,11 @@ jobs:
 
       - name: Boot simulator
         if: matrix.target == 'ios'
+        timeout-minutes: 5
         run:
-          xcrun simctl bootstatus "${{ steps.find_simulator_id.outputs.ID }}" -b
+          until xcrun simctl bootstatus "${{ steps.find_simulator_id.outputs.ID }}"; do
+            sleep 5
+          done
 
       - name: Checkout code
         uses: actions/checkout@v4
