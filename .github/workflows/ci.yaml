@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+env:
+  emulatorSystemImage: 'system-images;android-33;google_apis;x86'
+  emulatorName: 'emulator'
+  emulatorDevice: 'pixel_4'
+  emulatorPort: 5554
+
+jobs:
+  run:
+    strategy:
+      matrix:
+        include:
+          - host: macos-13
+            target: android
+            device: emulator-5554
+    runs-on: ${{ matrix.host }}
+    steps:
+      - name: Add avdmanager and sdkmanager to PATH
+        if: matrix.target == 'android'
+        run: |
+          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "$ANDROID_HOME/emulator" >> $GITHUB_PATH
+          echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
+
+      - name: Accept licenses
+        if: matrix.target == 'android'
+        run: yes Y | sdkmanager --licenses
+
+      - name: Install system image
+        if: matrix.target == 'android'
+        run: sdkmanager "${{ env.emulatorSystemImage }}"
+
+      - name: Create emulator
+        if: matrix.target == 'android'
+        run: |
+          avdmanager create avd \
+            -n "${{ env.emulatorName }}" \
+            -k "${{ env.emulatorSystemImage }}" \
+            -d "${{ env.emulatorDevice }}"
+
+      - name: Start emulator
+        if: matrix.target == 'android'
+        run: |
+          emulator \
+            -avd "${{ env.emulatorName }}" \
+            -port "${{ env.emulatorPort }}" \
+            -partition-size 2048 \
+            >/dev/null 2>&1 &
+
+      - name: Wait for emulator
+        if: matrix.target == 'android'
+        run: adb -s "emulator-${{ env.emulatorPort }}" wait-for-device
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run intergration tests
+        run: flutter test integration_test --device ${{ matrix.device }}
