@@ -11,6 +11,8 @@ env:
   emulatorName: 'gha_ci_emulator'
   emulatorDevice: 'pixel_4'
   emulatorPort: 5554
+  simulatorOs: 15-2
+  simulatorDevice: 'iPhone 13'
 
 jobs:
   run:
@@ -19,20 +21,22 @@ jobs:
         include:
           - host: macos-12
             target: android
+          - host: macos-12
+            target: ios
     runs-on: ${{ matrix.host }}
     steps:
-      - name: Add avdmanager and sdkmanager to PATH
+      - name: Add Android tools to PATH
         if: matrix.target == 'android'
         run: |
           echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
           echo "$ANDROID_HOME/emulator" >> $GITHUB_PATH
           echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
 
-      - name: Accept licenses
+      - name: Accept Android licenses
         if: matrix.target == 'android'
         run: yes Y | sdkmanager --licenses
 
-      - name: Install system image
+      - name: Install emulator system image
         if: matrix.target == 'android'
         run: sdkmanager "${{ env.emulatorSystemImage }}"
 
@@ -57,6 +61,25 @@ jobs:
         if: matrix.target == 'android'
         run: adb -s "emulator-${{ env.emulatorPort }}" wait-for-device
 
+      - name: Find simulator ID
+        if: matrix.target == 'ios'
+        id: find_simulator_id
+        run: |
+          ID=$(
+            xcrun simctl list -j |
+            jq \
+              ".devices[\"com.apple.CoreSimulator.SimRuntime.iOS-17-5\"] \
+                  | map(select(.name == \"iPhone 15\"))
+                  | first" |
+            jq -r '.udid'
+          )
+          echo "ID=$ID" >> $GITHUB_OUTPUT
+
+      - name: Boot simulator
+        if: matrix.target == 'ios'
+        run:
+          xcrun simctl bootstatus "${{ steps.find_simulator_id.outputs.ID }}" -b
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -70,3 +93,8 @@ jobs:
         if: matrix.target == 'android'
         run: |
           flutter test integration_test --device-id "emulator-${{ env.emulatorPort }}"
+
+      - name: Run intergration tests on iOS
+        if: matrix.target == 'ios'
+        run: |
+          flutter test integration_test --device-id "${{ steps.find_simulator_id.outputs.ID }}"
