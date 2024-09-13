@@ -7,7 +7,7 @@ on:
   pull_request:
 
 env:
-  emulatorSystemImage: 'system-images;android-33;google_apis;x86'
+  emulatorSystemImage: 'system-images;android-22;google_apis;x86'
   emulatorName: 'emulator'
   emulatorDevice: 'pixel_4'
   emulatorPort: 5554
