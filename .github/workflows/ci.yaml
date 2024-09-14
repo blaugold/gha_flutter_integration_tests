@@ -7,7 +7,7 @@ on:
   pull_request:
 
 env:
-  emulatorSystemImage: 'system-images;android-22;google_apis;x86'
+  emulatorSystemImage: 'system-images;android-22;google_apis;x86_64'
   emulatorName: 'gha_ci_emulator'
   emulatorDevice: 'pixel_4'
   emulatorPort: 5554
@@ -19,12 +19,19 @@ jobs:
     strategy:
       matrix:
         include:
-          - host: macos-12
+          - host: ubuntu-22.04
             target: android
           - host: macos-14
             target: ios
     runs-on: ${{ matrix.host }}
     steps:
+      - name: Enable KVM group perms
+        if: matrix.target == 'android'
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
       - name: Add Android tools to PATH
         if: matrix.target == 'android'
         run: |
@@ -35,6 +42,14 @@ jobs:
       - name: Accept Android licenses
         if: matrix.target == 'android'
         run: yes Y | sdkmanager --licenses
+
+      - name: Install Android platform tools
+        if: matrix.target == 'android'
+        run: sdkmanager platform-tools
+
+      - name: Install Android emulator
+        if: matrix.target == 'android'
+        run: sdkmanager emulator
 
       - name: Install emulator system image
         if: matrix.target == 'android'
@@ -57,11 +72,15 @@ jobs:
             -no-window \
             -no-audio \
             -no-boot-anim \
-            -partition-size 2048 \
-            >/dev/null 2>&1 &
+            -partition-size 4096 \
+            >./emulator-logs.txt 2>&1 &
+
+          sleep 15
+          cat ./emulator-logs.txt
 
       - name: Wait for emulator
         if: matrix.target == 'android'
+        timeout-minutes: 2
         run: adb -s "emulator-${{ env.emulatorPort }}" wait-for-device
 
       - name: Install Java 17
@@ -114,3 +133,7 @@ jobs:
         if: matrix.target == 'ios'
         run: |
           flutter test integration_test --device-id "${{ steps.find_simulator_id.outputs.ID }}"
+
+      - name: Print emulator logs
+        if: matrix.target == 'android' && failure()
+        run: cat ./emulator-logs.txt
