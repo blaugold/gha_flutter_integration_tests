@@ -7,7 +7,7 @@ on:
   pull_request:
 
 env:
-  emulatorSystemImage: 'system-images;android-22;google_apis;x86'
+  emulatorSystemImage: 'system-images;android-22;google_apis;x86_64'
   emulatorName: 'gha_ci_emulator'
   emulatorDevice: 'pixel_4'
   emulatorPort: 5554
@@ -19,7 +19,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - host: macos-12
+          - host: ubuntu-22.04
             target: android
           - host: macos-14
             target: ios
@@ -35,6 +35,10 @@ jobs:
       - name: Accept Android licenses
         if: matrix.target == 'android'
         run: yes Y | sdkmanager --licenses
+
+      - name: Install Android emulator
+        if: matrix.target == 'android'
+        run: sdkmanager emulator
 
       - name: Install emulator system image
         if: matrix.target == 'android'
