@@ -15,7 +15,7 @@ env:
   simulatorDevice: iPhone 15
 
 jobs:
-  android-integration-test:
+  integration-test-android:
     runs-on: ubuntu-22.04
     steps:
       # Necessary so that the emulator can run with hardware acceleration.
@@ -100,7 +100,7 @@ jobs:
         if: failure()
         run: cat ./emulator-logs.txt
 
-  ios-integration-test:
+  integration-test-ios:
     runs-on: macos-14
     steps:
       - name: Find simulator ID
