@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+env:
+  emulatorSystemImage: 'system-images;android-22;google_apis;x86'
+  emulatorName: 'gha_ci_emulator'
+  emulatorDevice: 'pixel_4'
+  emulatorPort: 5554
+  simulatorOs: iOS-16-2
+  simulatorDevice: 'iPhone 14'
+
+jobs:
+  run:
+    strategy:
+      matrix:
+        include:
+          - host: macos-12
+            target: android
+          - host: macos-12
+            target: ios
+    runs-on: ${{ matrix.host }}
+    steps:
+      - name: Add Android tools to PATH
+        if: matrix.target == 'android'
+        run: |
+          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "$ANDROID_HOME/emulator" >> $GITHUB_PATH
+          echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
+
+      - name: Accept Android licenses
+        if: matrix.target == 'android'
+        run: yes Y | sdkmanager --licenses
+
+      - name: Install emulator system image
+        if: matrix.target == 'android'
+        run: sdkmanager "${{ env.emulatorSystemImage }}"
+
+      - name: Create emulator
+        if: matrix.target == 'android'
+        run: |
+          avdmanager create avd \
+            --name "${{ env.emulatorName }}" \
+            --package "${{ env.emulatorSystemImage }}" \
+            --device "${{ env.emulatorDevice }}"
+
+      - name: Start emulator
+        if: matrix.target == 'android'
+        run: |
+          emulator \
+            -avd "${{ env.emulatorName }}" \
+            -port "${{ env.emulatorPort }}" \
+            -no-window \
+            -no-audio \
+            -no-boot-anim \
+            -partition-size 2048 \
+            >/dev/null 2>&1 &
+
+      - name: Wait for emulator
+        if: matrix.target == 'android'
+        run: adb -s "emulator-${{ env.emulatorPort }}" wait-for-device
+
+      - name: Install Java 17
+        if: matrix.target == 'android'
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'adopt'
+          java-version: '17'
+
+      - name: Setup Gradle
+        if: matrix.target == 'android'
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Find simulator ID
+        if: matrix.target == 'ios'
+        id: find_simulator_id
+        run: |
+          ID=$(
+            xcrun simctl list -j |
+            jq \
+              ".devices[\"com.apple.CoreSimulator.SimRuntime.${{ env.simulatorOs }}\"] \
+                  | map(select(.name == \"${{ env.simulatorDevice }}\"))
+                  | first" |
+            jq -r '.udid'
+          )
+          echo "ID=$ID" >> $GITHUB_OUTPUT
+
+      - name: Boot simulator
+        if: matrix.target == 'ios'
+        run: |
+          xcrun simctl bootstatus "${{ steps.find_simulator_id.outputs.ID }}" -b
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run intergration tests on Android
+        if: matrix.target == 'android'
+        run: |
+          flutter test integration_test --device-id "emulator-${{ env.emulatorPort }}"
+
+      - name: Run intergration tests on iOS
+        if: matrix.target == 'ios'
+        run: |
+          flutter test integration_test --device-id "${{ steps.find_simulator_id.outputs.ID }}"
