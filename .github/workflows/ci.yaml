@@ -7,56 +7,43 @@ on:
   pull_request:
 
 env:
-  emulatorSystemImage: 'system-images;android-22;google_apis;x86_64'
-  emulatorName: 'gha_ci_emulator'
-  emulatorDevice: 'pixel_4'
+  emulatorSystemImage: system-images;android-35;google_apis;x86_64
+  emulatorDevice: pixel_4
+  emulatorName: integration_test
   emulatorPort: 5554
   simulatorOs: iOS-17-5
-  simulatorDevice: 'iPhone 15'
+  simulatorDevice: iPhone 15
 
 jobs:
-  run:
-    strategy:
-      matrix:
-        include:
-          - host: ubuntu-22.04
-            target: android
-          - host: macos-14
-            target: ios
-    runs-on: ${{ matrix.host }}
+  integration-test-android:
+    runs-on: ubuntu-22.04
     steps:
+      # Necessary so that the emulator can run with hardware acceleration.
       - name: Enable KVM group perms
-        if: matrix.target == 'android'
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
       - name: Add Android tools to PATH
-        if: matrix.target == 'android'
         run: |
           echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
           echo "$ANDROID_HOME/emulator" >> $GITHUB_PATH
           echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
 
-      - name: Accept Android licenses
-        if: matrix.target == 'android'
+      - name: Accept Android SDK licenses
         run: yes Y | sdkmanager --licenses
 
-      - name: Install Android platform tools
-        if: matrix.target == 'android'
+      - name: Install platform tools
         run: sdkmanager platform-tools
 
-      - name: Install Android emulator
-        if: matrix.target == 'android'
+      - name: Install emulator
         run: sdkmanager emulator
 
-      - name: Install emulator system image
-        if: matrix.target == 'android'
+      - name: Install system image
         run: sdkmanager "${{ env.emulatorSystemImage }}"
 
       - name: Create emulator
-        if: matrix.target == 'android'
         run: |
           avdmanager create avd \
             --name "${{ env.emulatorName }}" \
@@ -64,7 +51,6 @@ jobs:
             --device "${{ env.emulatorDevice }}"
 
       - name: Start emulator
-        if: matrix.target == 'android'
         run: |
           emulator \
             -avd "${{ env.emulatorName }}" \
@@ -75,27 +61,49 @@ jobs:
             -partition-size 4096 \
             >./emulator-logs.txt 2>&1 &
 
-          sleep 15
+          sleep 10
           cat ./emulator-logs.txt
 
       - name: Wait for emulator
-        if: matrix.target == 'android'
         timeout-minutes: 2
         run: adb -s "emulator-${{ env.emulatorPort }}" wait-for-device
 
       - name: Install Java 17
-        if: matrix.target == 'android'
         uses: actions/setup-java@v4
         with:
           distribution: 'adopt'
           java-version: '17'
 
+      # Using this action greatly speeds up the build process through caching of dependencies
+      # and build artifacts.
       - name: Setup Gradle
-        if: matrix.target == 'android'
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          cache: true
+          pub-cache-key: |
+            flutter-pub-:os:-:channel:-:version:-:arch:-:hash:-${{ hashFiles('**/pubspec.*') }}
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run intergration tests
+        run: |
+          flutter test integration_test --device-id "emulator-${{ env.emulatorPort }}"
+
+      - name: Print emulator logs
+        if: failure()
+        run: cat ./emulator-logs.txt
+
+  integration-test-ios:
+    runs-on: macos-14
+    steps:
       - name: Find simulator ID
-        if: matrix.target == 'ios'
         id: find_simulator_id
         run: |
           ID=$(
@@ -109,7 +117,6 @@ jobs:
           echo "ID=$ID" >> $GITHUB_OUTPUT
 
       - name: Boot simulator
-        if: matrix.target == 'ios'
         run: |
           xcrun simctl bootstatus "${{ steps.find_simulator_id.outputs.ID }}" -b
 
@@ -120,20 +127,12 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           cache: true
+          pub-cache-key: |
+            flutter-pub-:os:-:channel:-:version:-:arch:-:hash:-${{ hashFiles('**/pubspec.*') }}
 
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Run intergration tests on Android
-        if: matrix.target == 'android'
-        run: |
-          flutter test integration_test --device-id "emulator-${{ env.emulatorPort }}"
-
-      - name: Run intergration tests on iOS
-        if: matrix.target == 'ios'
+      - name: Run intergration tests
         run: |
           flutter test integration_test --device-id "${{ steps.find_simulator_id.outputs.ID }}"
-
-      - name: Print emulator logs
-        if: matrix.target == 'android' && failure()
-        run: cat ./emulator-logs.txt
