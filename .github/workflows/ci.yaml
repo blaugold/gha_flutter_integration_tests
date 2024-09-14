@@ -87,7 +87,7 @@ jobs:
         with:
           cache: true
           pub-cache-key: |
-            flutter-pub-:os:-:channel:-:version:-:arch:-:hash:-${{ hashFiles('**/pubspec.*') }}
+            flutter-pub-:os:-:channel:-:version:-:arch:-:hash:-${{ hashFiles('**/pubspec.lock') }}
 
       - name: Install dependencies
         run: flutter pub get
@@ -123,12 +123,28 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Cache CocoaPods
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cocoapods/
+            ios/Pods/
+          key: cocoapods-${{ hashFiles('ios/Podfile.lock') }}
+          restore-keys: cocoapods-
+
+      - name: Cache Xcode Derived Data
+        uses: actions/cache@v3
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData
+          key: xcode-derived-data-${{ hashFiles('ios/Podfile.lock') }}
+          restore-keys: xcode-derived-data-
+
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
           cache: true
           pub-cache-key: |
-            flutter-pub-:os:-:channel:-:version:-:arch:-:hash:-${{ hashFiles('**/pubspec.*') }}
+            flutter-pub-:os:-:channel:-:version:-:arch:-:hash:-${{ hashFiles('**/pubspec.lock') }}
 
       - name: Install dependencies
         run: flutter pub get
