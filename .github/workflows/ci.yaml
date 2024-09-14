@@ -65,11 +65,18 @@ jobs:
             -no-window \
             -no-audio \
             -no-boot-anim \
-            -partition-size 2048
+            -partition-size 2048 \
+            -accel off
+            # >./emulator-logs.txt 2>&1 &
 
       - name: Wait for emulator
         if: matrix.target == 'android'
+        timeout-minutes: 2
         run: adb -s "emulator-${{ env.emulatorPort }}" wait-for-device
+
+      - name: Print emulator logs
+        if: matrix.target == 'android' && failure()
+        run: cat ./emulator-logs.txt
 
       - name: Install Java 17
         if: matrix.target == 'android'
