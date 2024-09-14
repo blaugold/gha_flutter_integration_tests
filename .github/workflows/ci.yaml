@@ -54,6 +54,9 @@ jobs:
           emulator \
             -avd "${{ env.emulatorName }}" \
             -port "${{ env.emulatorPort }}" \
+            -no-window \
+            -no-audio \
+            -no-boot-anim \
             -partition-size 2048 \
             >/dev/null 2>&1 &
 
@@ -84,7 +87,6 @@ jobs:
 
       - name: Boot simulator
         if: matrix.target == 'ios'
-        timeout-minutes: 5
         run: |
           xcrun simctl bootstatus "${{ steps.find_simulator_id.outputs.ID }}" -b
 
@@ -93,6 +95,8 @@ jobs:
 
       - name: Install Flutter
         uses: subosito/flutter-action@v2
+        with:
+          cache: true
 
       - name: Install dependencies
         run: flutter pub get
