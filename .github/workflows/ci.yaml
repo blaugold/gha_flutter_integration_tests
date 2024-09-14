@@ -11,8 +11,8 @@ env:
   emulatorName: 'gha_ci_emulator'
   emulatorDevice: 'pixel_4'
   emulatorPort: 5554
-  simulatorOs: iOS-15-2
-  simulatorDevice: 'iPhone 13'
+  simulatorOs: iOS-16-2
+  simulatorDevice: 'iPhone 14'
 
 jobs:
   run:
@@ -86,11 +86,7 @@ jobs:
         if: matrix.target == 'ios'
         timeout-minutes: 5
         run: |
-          xcrun simctl boot "${{ steps.find_simulator_id.outputs.ID }}"
-          until xcrun simctl bootstatus "${{ steps.find_simulator_id.outputs.ID }}" -b; do
-            echo "Waiting for simulator to boot..."
-            sleep 5
-          done
+          xcrun simctl bootstatus "${{ steps.find_simulator_id.outputs.ID }}" -b
 
       - name: Checkout code
         uses: actions/checkout@v4
