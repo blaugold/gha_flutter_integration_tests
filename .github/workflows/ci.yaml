@@ -36,6 +36,10 @@ jobs:
         if: matrix.target == 'android'
         run: yes Y | sdkmanager --licenses
 
+      - name: Install Android platform tools
+        if: matrix.target == 'android'
+        run: sdkmanager platform-tools
+
       - name: Install Android emulator
         if: matrix.target == 'android'
         run: sdkmanager emulator
