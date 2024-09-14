@@ -66,17 +66,13 @@ jobs:
             -no-audio \
             -no-boot-anim \
             -partition-size 2048 \
-            -accel off
-            # >./emulator-logs.txt 2>&1 &
+            -accel off \
+            >./emulator-logs.txt 2>&1 &
 
       - name: Wait for emulator
         if: matrix.target == 'android'
         timeout-minutes: 2
         run: adb -s "emulator-${{ env.emulatorPort }}" wait-for-device
-
-      - name: Print emulator logs
-        if: matrix.target == 'android' && failure()
-        run: cat ./emulator-logs.txt
 
       - name: Install Java 17
         if: matrix.target == 'android'
@@ -128,3 +124,7 @@ jobs:
         if: matrix.target == 'ios'
         run: |
           flutter test integration_test --device-id "${{ steps.find_simulator_id.outputs.ID }}"
+
+      - name: Print emulator logs
+        if: matrix.target == 'android' && failure()
+        run: cat ./emulator-logs.txt
