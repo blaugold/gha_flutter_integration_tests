@@ -65,8 +65,7 @@ jobs:
             -no-window \
             -no-audio \
             -no-boot-anim \
-            -partition-size 2048 \
-            >/dev/null 2>&1 &
+            -partition-size 2048
 
       - name: Wait for emulator
         if: matrix.target == 'android'
