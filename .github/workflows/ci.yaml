@@ -11,8 +11,8 @@ env:
   emulatorName: 'gha_ci_emulator'
   emulatorDevice: 'pixel_4'
   emulatorPort: 5554
-  simulatorOs: iOS-16-2
-  simulatorDevice: 'iPhone 14'
+  simulatorOs: iOS-17-5
+  simulatorDevice: 'iPhone 15'
 
 jobs:
   run:
@@ -21,7 +21,7 @@ jobs:
         include:
           - host: macos-12
             target: android
-          - host: macos-12
+          - host: macos-14
             target: ios
     runs-on: ${{ matrix.host }}
     steps:
